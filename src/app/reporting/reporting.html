@@ -1,0 +1,92 @@
+<div class="p-6 bg-black min-h-screen text-white font-sans">
+  <div class="max-w-7xl mx-auto">
+    
+    <div class="flex flex-col md:flex-row justify-between items-end mb-10 gap-6">
+      <div>
+        <h1 class="text-4xl font-black uppercase italic tracking-tighter text-amber-500 leading-none">Business<br>History</h1>
+        <p class="text-zinc-500 text-[10px] font-black uppercase tracking-widest mt-2">Showing {{ filteredHistory.length }} Records</p>
+      </div>
+      <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-[2rem] text-right min-w-[280px] shadow-2xl">
+        <p class="text-zinc-500 text-[10px] font-black uppercase tracking-widest mb-1">Total Revenue</p>
+        <h2 class="text-4xl font-black text-white italic tracking-tighter">R{{ totalRevenue | number:'1.2-2' }}</h2>
+      </div>
+    </div>
+
+    <div class="bg-zinc-900/50 border border-zinc-800 p-6 rounded-[2rem] mb-8 shadow-xl">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+        
+        <div>
+          <label class="block text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 px-1">Search Name / Cell</label>
+          <input type="text" [(ngModel)]="filterText" (input)="applyFilters()" placeholder="Type to search..." 
+                 class="w-full bg-zinc-800 border-none rounded-xl p-3 text-sm text-white focus:ring-2 focus:ring-amber-500 transition-all">
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 px-1">Date From</label>
+          <input type="date" [(ngModel)]="startDate" (change)="applyFilters()" 
+                 class="w-full bg-zinc-800 border-none rounded-xl p-3 text-sm text-white focus:ring-2 focus:ring-amber-500 transition-all">
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 px-1">Date To</label>
+          <input type="date" [(ngModel)]="endDate" (change)="applyFilters()" 
+                 class="w-full bg-zinc-800 border-none rounded-xl p-3 text-sm text-white focus:ring-2 focus:ring-amber-500 transition-all">
+        </div>
+
+        <button (click)="toggleSort()" 
+                class="w-full bg-zinc-800 hover:bg-zinc-700 text-amber-500 border border-zinc-700 font-black py-3 rounded-xl uppercase text-[10px] tracking-widest transition-all">
+          Sort: {{ sortDirection === 'asc' ? 'Oldest First' : 'Newest First' }}
+        </button>
+
+      </div>
+    </div>
+
+    <div class="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead class="bg-zinc-950 text-[10px] font-black uppercase tracking-widest text-zinc-500 border-b border-zinc-800">
+            <tr>
+              <th class="px-6 py-6">Date</th>
+              <th class="px-6 py-6">Client Name</th>
+              <th class="px-6 py-6">Cell Number</th>
+              <th class="px-6 py-6">Barber</th>
+              <th class="px-6 py-6">Services</th>
+              <th class="px-6 py-6 text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-zinc-800">
+            @for (row of filteredHistory; track row._row) {
+              <tr class="hover:bg-zinc-800/30 transition-colors group">
+                <td class="px-6 py-6 font-mono text-xs text-zinc-500">{{ row['Date'] }}</td>
+                <td class="px-6 py-6 font-bold text-white uppercase group-hover:text-amber-500 transition-colors">{{ row['Name'] }}</td>
+                <td class="px-6 py-6 font-mono text-xs text-zinc-400">{{ row['Cellphone Number'] }}</td>
+                <td class="px-6 py-6 text-zinc-300 font-bold uppercase italic text-xs">{{ row['Barber'] }}</td>
+                <td class="px-6 py-6">
+                  <ul class="text-[10px] space-y-1">
+                    @for (item of getProductsList(row); track item) {
+                      <li class="flex items-center gap-2 text-zinc-400">
+                        <span class="h-1 w-1 bg-amber-500 rounded-full"></span>
+                        {{ item }}
+                      </li>
+                    }
+                  </ul>
+                </td>
+                <td class="px-6 py-6 text-right font-black text-white text-lg">
+                  R{{ row['Amount'] | number:'1.2-2' }}
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="px-8 py-24 text-center">
+                  <p class="text-zinc-600 italic mb-2">No records match your filters.</p>
+                  <button (click)="filterText = ''; startDate = ''; endDate = ''; applyFilters()" class="text-amber-500 text-[10px] font-black uppercase tracking-widest underline">Reset All Filters</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>

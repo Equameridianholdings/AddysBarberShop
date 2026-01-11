@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 
@@ -10,17 +10,27 @@ export class Database {
 private http = inject(HttpClient);
   
   // Replace this with your Web App URL from the 'Deploy' button in Apps Script
-  private scriptUrl = 'https://script.google.com/macros/s/AKfycbwwWEibMu9whb_RZsGZ1JFC56EeQS8Y3BymI8wDmm3OXLugJVBTjcyS5qstd7aE54fU/exec';
+  private scriptUrl = 'https://script.google.com/macros/s/AKfycbzuvOFWSoSV6bzMM3XNZw2-sMasFQL82WyF1RW9-DvbLdiFrz7ATfKOepFV-iqegm5y/exec';
   /**
    * Fetches the full queue.
    * We will filter this in the component to show only unserved customers.
    */
-  getQueue(): Observable<any[]> {
+  getQueue(p0: string): Observable<any[]> {
     return this.http.get<any>(this.scriptUrl).pipe(
       map((response: { status: string; data: any; }) => response.status === 'ok' ? response.data : [])
     );
   }
+// src/app/database.ts
 
+getAssisted(): Observable<any[]> {
+  const params = new HttpParams().set('sheet', 'Assisted');
+
+  return this.http.get<any>(this.scriptUrl, { params }).pipe(
+    map((response: { status: string; data: any; }) => 
+      response.status === 'ok' ? response.data : []
+    )
+  );
+}
   /**
    * Fetches the Price list from the 'Prices' sheet
    */

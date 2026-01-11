@@ -33,26 +33,92 @@ export class Que implements OnInit {
   selectedCustomer: any = null; // When this is not null, show the "PAY" modal
   selectedProducts: any[] = [];
 
-  ngOnInit() {
-    this.loadData();
-    this.fetchBarbers();
+ // Add these to your class properties
+currentTime = new Date();
+
+// Inside que.ts
+ngOnInit() {
+  this.loadData();
+  this.fetchPrices(); // Make sure this is called
+  this.fetchBarbers();
+  
+  setInterval(() => {
+    this.currentTime = new Date();
+  }, 60000);
+}
+
+fetchPrices() {
+  this.db.getPrices().subscribe({
+    next: (data: any[]) => {
+      this.priceList = data;
+      console.log('Prices loaded:', this.priceList);
+    },
+    error: (err) => this.showToaster('Failed to load services', false)
+  });
+}
+
+getWaitTime(timeInStr: string): string {
+  if (!timeInStr) return '0m';
+  
+  // Parse the "HH:mm:ss" string from the sheet
+  const [hours, minutes] = timeInStr.split(':').map(Number);
+  const checkIn = new Date();
+  checkIn.setHours(hours, minutes, 0);
+
+  // If the calculation results in a future time (e.g., checking at 1 AM for an 11 PM entry)
+  if (checkIn > this.currentTime) {
+    checkIn.setDate(checkIn.getDate() - 1);
   }
 
-  /**
-   * REFRESH QUEUE & PRICES
-   */
-  loadData() {
-    this.loading = true;
-    this.db.getQueue().subscribe((data) => {
-      // Filter: Only show customers where "Time out" is empty
-      this.unservedCustomers = data.filter(c => !c['Time out'] || c['Time out'].trim() === '');
-      this.loading = false;
-    });
+  const diffMs = this.currentTime.getTime() - checkIn.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
 
-    this.db.getPrices().subscribe((prices) => {
-      this.priceList = prices;
-    });
+  if (diffMins < 60) {
+    return `${diffMins}m`;
+  } else {
+    const h = Math.floor(diffMins / 60);
+    const m = diffMins % 60;
+    return `${h}h ${m}m`;
   }
+}
+// Inside your loadData() method in que.ts
+loadData() {
+  this.db.getQueue('Queue').subscribe({
+    next: (data: any[]) => {
+      // 1. Keep the full list for calculating averages
+      this.allCustomers = data; 
+
+      // 2. Filter for the UI list (only people who HAVEN'T paid yet)
+      this.unservedCustomers = data.filter(c => !c['Time Out'] || c['Time Out'].trim() === '');
+      
+      console.log('Average Calculation Data:', this.allCustomers.length);
+    },
+    error: (err) => this.showToaster('Failed to load queue', false)
+  });
+}
+
+getAvgServiceTime(): string {
+  // Look for rows where Time Out has been set
+  const served = this.allCustomers.filter(c => c['Time In'] && c['Time Out'] && c['Time Out'].trim() !== '');
+  
+  if (served.length === 0) return '0m';
+
+  const totalDiff = served.reduce((acc, c) => {
+    // Parse HH:mm:ss strings
+    const parseTime = (timeStr: string) => {
+      const [h, m] = timeStr.split(':').map(Number);
+      const d = new Date();
+      d.setHours(h, m, 0);
+      return d.getTime();
+    };
+
+    const diff = (parseTime(c['Time Out']) - parseTime(c['Time In'])) / 60000;
+    return acc + (diff > 0 ? diff : 0);
+  }, 0);
+
+  const avg = Math.round(totalDiff / served.length);
+  return avg < 60 ? `${avg}m` : `${Math.floor(avg / 60)}h ${avg % 60}m`;
+}
 
   fetchBarbers() {
     this.db.getBarbers().subscribe((data) => {
@@ -107,7 +173,7 @@ submitToQueue() {
       if (response && response.status === 'ok') {
         this.showToaster('Success! Added to the queue.', true);
         // Refresh after a short delay so user sees the success message
-        setTimeout(() => window.location.reload(), 1500);
+        setTimeout(() => window.location.reload(), 1000);
       } else {
         this.isSubmitting = false;
         this.showToaster(response.message || 'Try again.', false);
@@ -147,28 +213,57 @@ submitToQueue() {
     return this.selectedProducts.reduce((sum, p) => sum + Number(p.Price || 0), 0);
   }
 
-  processPayment(method: 'Cash' | 'Card') {
-    if (!this.selectedCustomer || this.selectedProducts.length === 0) {
-      alert('Please select at least one service.');
-      return;
-    }
+ // Add these properties to your class
+showCashModal = false;
+showDigitalModal = false;
+cashReceived = 0;
 
-    const payload = {
-      action: 'update',
-      row: this.selectedCustomer._row,
-      totalAmount: this.getTotal(),
-      paymentType: method,
-      selectedProducts: this.selectedProducts.map(p => p.CutType)
-    };
+get changeDue(): number {
+  const change = this.cashReceived - this.getTotal();
+  return change > 0 ? change : 0;
+}
 
-    this.db.updateClient(payload).subscribe({
-      next: () => {
-        this.selectedCustomer = null; // Close checkout modal
-        this.loadData(); // Refresh list to remove the served customer
-      },
-      error: (err) => alert('Error processing payment: ' + err)
-    });
+// Update your processPayment method
+processPayment(method: 'Cash' | 'Card') {
+  if (!this.selectedCustomer || this.selectedProducts.length === 0) {
+    this.showToaster('Please select at least one service.', false);
+    return;
   }
+
+  if (method === 'Cash') {
+    this.showCashModal = true;
+  } else {
+    this.showDigitalModal = true;
+  }
+}
+
+// Final submission after modal confirmation
+confirmFinalPayment(method: string) {
+  this.isSubmitting = true;
+  
+  const payload = {
+    action: 'update',
+    row: this.selectedCustomer._row,
+    totalAmount: this.getTotal(),
+    paymentType: method,
+    selectedProducts: this.selectedProducts.map(p => p.CutType)
+  };
+
+  this.db.updateClient(payload).subscribe({
+    next: (res: any) => {
+      this.showToaster(`Payment Recorded: ${method}`, true);
+      this.showCashModal = false;
+      this.showDigitalModal = false;
+      this.selectedCustomer = null;
+      
+      setTimeout(() => window.location.reload(), 500);
+    },
+    error: (err) => {
+      this.isSubmitting = false;
+      this.showToaster('Payment failed. Try again.', false);
+    }
+  });
+}
 
   // Add these to your class properties
 showSkipModal = false;
@@ -203,7 +298,7 @@ executeSkip() {
         // 3. Refresh page after a short delay so they see the toaster
         setTimeout(() => {
           window.location.reload();
-        }, 1500);
+        }, 1000);
       } else {
         this.isSubmitting = false;
         this.showToaster(res.message || 'Error removing customer', false);
@@ -216,5 +311,10 @@ executeSkip() {
     }
   });
 }
+// Add these to your class properties
+allCustomers: any[] = []; // Ensure this is populated when you fetch data
+
+
+
   
 }
