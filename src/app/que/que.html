@@ -1,0 +1,168 @@
+@if (toaster.show) {
+<div [ngClass]="toaster.success ? 'bg-green-600' : 'bg-red-600'"
+     class="fixed top-0 left-0 right-0 z-[9999] p-4 text-center font-black uppercase tracking-widest text-sm shadow-2xl transition-transform duration-300 transform translate-y-0">
+  {{ toaster.message }}
+</div>
+}
+
+<div class="p-6 bg-black min-h-screen text-white font-sans relative">
+
+  <div class="flex flex-col md:flex-row justify-between items-center mb-10 gap-6 border-b border-zinc-800 pb-8">
+    <div class="flex items-center gap-5">
+      <h1 class="text-4xl font-black italic uppercase tracking-tighter text-amber-500">
+        Addy's Queue
+      </h1>
+      <div class="bg-amber-500 text-black px-4 py-1 rounded-full font-black text-2xl shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+        {{ unservedCustomers.length }}
+      </div>
+    </div>
+    
+    <button (click)="showJoinModal = true" class="bg-white text-black px-10 py-3 font-black rounded-full hover:bg-amber-500 hover:scale-105 transition-all uppercase tracking-widest text-sm shadow-lg">
+      Join Queue
+    </button>
+  </div>
+
+  <div class="grid gap-4 max-w-4xl mx-auto">
+    @for (c of unservedCustomers; track c._row) {
+      <div class="bg-zinc-900 p-5 rounded-2xl flex justify-between items-center border border-zinc-800 hover:border-amber-500/50 transition-all group">
+        <div class="flex items-center gap-4">
+          <button (click)="confirmSkip(c)" class="text-zinc-700 hover:text-red-500 transition-colors p-2" title="Skip Customer">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+
+          <div>
+            <h2 class="text-xl font-bold uppercase tracking-tight group-hover:text-amber-500 transition-colors">
+              {{ c.Name }}
+            </h2>
+            <div class="flex items-center gap-3 mt-1 text-zinc-500 text-sm">
+              <p class="italic">Barber: <span class="text-zinc-300 font-bold">{{ c.Barber }}</span></p>
+              <span>|</span>
+              <p>In: {{ c['Time In'] }}</p>
+            </div>
+          </div>
+        </div>
+
+        <button (click)="openCheckout(c)" class="bg-zinc-800 text-amber-500 border border-amber-500/20 px-6 py-2 font-black rounded-xl hover:bg-amber-500 hover:text-black transition-all uppercase text-xs tracking-widest">
+          PAY
+        </button>
+      </div>
+    } @empty {
+      <div class="text-center py-20 border-2 border-dashed border-zinc-800 rounded-3xl">
+        <p class="text-zinc-600 text-lg italic font-light">The floor is swept. No customers waiting.</p>
+      </div>
+    }
+  </div>
+
+  @if (showJoinModal) {
+    <div class="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 z-50">
+      <div class="bg-zinc-900 border border-zinc-800 w-full max-w-md p-8 rounded-[2.5rem] shadow-2xl">
+        <div class="flex justify-between items-start mb-8">
+          <h2 class="text-3xl font-black uppercase italic text-amber-500 leading-none">Add to List</h2>
+          <button (click)="showJoinModal = false" class="text-zinc-500 hover:text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        
+        <div class="space-y-6">
+          <div>
+            <label class="block text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Customer Name</label>
+            <input name="custName" [(ngModel)]="newClient.name" type="text" placeholder="Enter name..." class="w-full bg-zinc-800 border-none rounded-2xl p-4 focus:ring-2 focus:ring-amber-500 text-white placeholder:text-zinc-600">
+          </div>
+
+          <div class="space-y-1">
+            <label class="block text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Cellphone (+27 + 9 Digits)</label>
+            <input 
+              #phoneInput
+              name="custPhone"
+              type="text" 
+              [(ngModel)]="newClient.cellphoneNumber"
+              (keydown.backspace)="newClient.cellphoneNumber.length <= 3 ? $event.preventDefault() : null"
+              (input)="newClient.cellphoneNumber = '+27' + phoneInput.value.replace('+27', '').replace(/\D/g, '').substring(0, 9)"
+              placeholder="+27"
+              maxlength="12"
+              class="w-full bg-zinc-800 border-2 rounded-2xl p-4 focus:outline-none transition-all font-mono tracking-widest"
+              [ngClass]="{
+                'border-zinc-700': newClient.cellphoneNumber.length <= 3,
+                'border-green-500': newClient.cellphoneNumber.length === 12,
+                'border-red-500': newClient.cellphoneNumber.length > 3 && newClient.cellphoneNumber.length < 12
+              }"
+            >
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Select Barber</label>
+            <select name="barberChoice" [(ngModel)]="newClient.barber" class="w-full bg-zinc-800 border-none rounded-2xl p-4 focus:ring-2 focus:ring-amber-500 text-white cursor-pointer">
+              <option value="" disabled selected>Choose a Barber...</option>
+              @for (b of barbers; track b._row) {
+                <option [value]="b.Barber">{{ b.Barber }}</option>
+              }
+            </select>
+          </div>
+
+          <button (click)="submitToQueue()" 
+                  [disabled]="newClient.cellphoneNumber.length < 12 || !newClient.name || !newClient.barber || isSubmitting"
+                  class="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-30 text-white font-black py-4 rounded-2xl transition-all uppercase tracking-widest h-16 flex items-center justify-center">
+            @if (!isSubmitting) { <span>Confirm</span> } @else { <span>Processing...</span> }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showSkipModal) {
+    <div class="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 z-[60]">
+      <div class="bg-zinc-900 border border-zinc-800 w-full max-w-sm p-8 rounded-[2.5rem] shadow-2xl text-center">
+        <div class="w-20 h-20 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h2 class="text-2xl font-black uppercase italic text-white mb-2 tracking-tighter">Skip Customer?</h2>
+        <p class="text-zinc-500 text-sm mb-8">Are you sure you want to remove <span class="text-white font-bold">{{ customerToSkip?.Name }}</span> from the queue?</p>
+        
+        <div class="flex gap-4">
+          <button (click)="showSkipModal = false" class="flex-1 px-4 py-3 font-bold text-zinc-500 hover:text-white transition-colors uppercase tracking-widest text-xs">Cancel</button>
+          <button (click)="executeSkip()" [disabled]="isSubmitting" 
+                  class="flex-1 bg-red-600 hover:bg-red-500 text-white font-black py-3 rounded-2xl transition-all uppercase tracking-widest text-xs shadow-lg shadow-red-900/20">
+            {{ isSubmitting ? '...' : 'Skip Row' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (selectedCustomer) {
+    <div class="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 z-50">
+      <div class="bg-zinc-900 border border-zinc-800 w-full max-w-lg p-8 rounded-[2.5rem] shadow-2xl overflow-y-auto max-h-[90vh]">
+        <h2 class="text-3xl font-black uppercase italic text-amber-500 mb-2 leading-none">Checkout</h2>
+        <p class="text-zinc-500 text-xs mb-6 uppercase tracking-widest border-b border-zinc-800 pb-2">Client: {{ selectedCustomer.Name }}</p>
+
+        <div class="grid grid-cols-2 gap-2 mb-8">
+          @for (p of priceList; track p._row) {
+            <button (click)="toggleProduct(p)"
+                    [ngClass]="selectedProducts.includes(p) ? 'bg-amber-500 text-black border-amber-500' : 'bg-zinc-800 text-zinc-400 border-zinc-700'"
+                    class="p-3 rounded-xl border-2 text-left transition-all flex justify-between items-center group">
+              <span class="text-[10px] font-bold uppercase truncate pr-1">{{ p.CutType }}</span>
+              <span class="text-xs font-black">R{{ p.Price }}</span>
+            </button>
+          }
+        </div>
+
+        <div class="border-t border-zinc-800 pt-6">
+          <div class="flex justify-between items-end mb-8">
+            <span class="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Total Amount</span>
+            <span class="text-4xl font-black text-white italic">R{{ getTotal() }}</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <button (click)="processPayment('Cash')" class="bg-zinc-100 text-black font-black py-4 rounded-2xl uppercase hover:bg-amber-500 transition-colors">Cash</button>
+            <button (click)="processPayment('Card')" class="bg-zinc-100 text-black font-black py-4 rounded-2xl uppercase hover:bg-amber-500 transition-colors">Card</button>
+          </div>
+          <button (click)="selectedCustomer = null" class="w-full text-zinc-600 font-bold mt-6 text-xs hover:text-white uppercase tracking-widest text-center">Cancel</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
