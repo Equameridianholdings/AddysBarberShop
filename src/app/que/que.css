@@ -1,0 +1,9 @@
+/* src/app/que.css */
+.fixed.top-0 {
+  animation: slideDown 0.5s ease-out forwards;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
