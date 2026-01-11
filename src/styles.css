@@ -1,3 +1,19 @@
-/* You can add global styles to this file, and also import other style files */
-
 @import "tailwindcss";
+
+/* Ensure the background is ALWAYS black so there is no white flash */
+@layer base {
+  body {
+    @apply bg-black;
+  }
+}
+
+/* Custom CSS to force visibility if Tailwind is still building */
+body {
+  background-color: black !important;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  max-width: 1200px;
+}
