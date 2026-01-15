@@ -22,7 +22,7 @@ export class Que implements OnInit {
   barbers: any[] = [];
   
   // UI State Management
-  isLoading = true; // Shows "Opening Shop" on page refresh
+  isLoading = true; 
   isSubmitting = false;
   showJoinModal = false;
   isUserSelected = false; 
@@ -49,7 +49,6 @@ export class Que implements OnInit {
   customerToSkip: any = null;
 
   ngOnInit() {
-    // Force the loading sequence on start
     this.initialLoad();
 
     // Auto-refresh clock for wait times
@@ -60,23 +59,27 @@ export class Que implements OnInit {
   }
 
   /**
-   * Core Data Loading - Blocks UI with "Opening Shop" until Queue is ready
+   * Core Data Loading - Blocks UI with "Opening Shop" screen.
+   * Clears existing lists to ensure the user doesn't see old data.
    */
   initialLoad() {
     this.isLoading = true;
+    this.unservedCustomers = []; // Force clear the list to kill cached views
     this.cdr.detectChanges();
 
     // Primary data fetch
     this.db.getQueue('Queue').subscribe({
       next: (data: any[]) => {
-        this.allCustomers = data; 
-        this.unservedCustomers = data.filter(c => !c['Time Out'] || c['Time Out'].trim() === '');
+        if (data && data.length > 0) {
+          this.allCustomers = data; 
+          this.unservedCustomers = data.filter(c => !c['Time Out'] || c['Time Out'].trim() === '');
+        }
         
-        // Brief delay for smoother visual transition before hiding loader
+        // Slight delay to ensure the dashboard feels solid when it appears
         setTimeout(() => {
           this.isLoading = false; 
           this.cdr.detectChanges();
-        }, 300);
+        }, 600);
       },
       error: (err) => {
         console.error('Connection failed:', err);
@@ -176,7 +179,7 @@ export class Que implements OnInit {
     this.isSubmitting = true;
     this.cdr.detectChanges();
 
-    // Create a "Temporary" object to show on screen immediately
+    // Create a "Temporary" object to show on screen immediately (Optimistic UI)
     const tempUser = {
       Name: this.newClient.name,
       Barber: this.newClient.barber,
@@ -201,7 +204,7 @@ export class Que implements OnInit {
           this.closeModal();
           this.isSubmitting = false;
 
-          // Sync with database after 2 seconds to refresh official row IDs
+          // Crucial: Wait 2 seconds for Google to process, then force fresh initialLoad
           setTimeout(() => {
             this.initialLoad(); 
           }, 2000);
@@ -233,8 +236,8 @@ export class Que implements OnInit {
       next: () => {
         this.showToaster('Removed from queue', true);
         this.showSkipModal = false;
-        // Full refresh to ensure indexing is correct
-        setTimeout(() => window.location.reload(), 800);
+        // Trigger initialLoad immediately to show loader while updating
+        setTimeout(() => this.initialLoad(), 800);
       },
       error: () => { 
         this.isSubmitting = false; 
@@ -268,7 +271,10 @@ export class Que implements OnInit {
     }).subscribe({
       next: () => {
         this.showToaster('Payment Sync Successful', true);
-        setTimeout(() => window.location.reload(), 500);
+        this.showCashModal = false;
+        this.showDigitalModal = false;
+        // Trigger initialLoad to verify the record moved to Assisted history
+        setTimeout(() => this.initialLoad(), 1000);
       },
       error: () => { 
         this.isSubmitting = false; 

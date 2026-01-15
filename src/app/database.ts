@@ -15,26 +15,15 @@ private http = inject(HttpClient);
    * Fetches the full queue.
    * We will filter this in the component to show only unserved customers.
    */
- getQueue(p0: string): Observable<any[]> {
-  // 1. Add Cache Busting to the URL to prevent "Old Data" issues
-  const cacheBuster = new Date().getTime();
-  const urlWithParams = `${this.scriptUrl}?cb=${cacheBuster}`;
-
-  return this.http.get<any>(urlWithParams).pipe(
-    // 2. Add Timeout to prevent Cloudflare from hanging
-    timeout(20000), 
-    // 3. Keep your mapping logic
-    map((response: { status: string; data: any; }) => 
-      response.status === 'ok' ? response.data : []
-    ),
-    // 4. Handle errors so the "Opening Shop" screen can disappear if it fails
-    catchError(err => {
-      console.error('Queue Fetch Error:', err);
-      return throwError(() => err);
-    })
+// database.ts
+// Inside your database.ts
+getQueue(sheet: string) {
+  // Use Date.now() to force a fresh fetch every time
+  const cb = Date.now();
+  return this.http.get<any>(`${this.scriptUrl}?sheet=${sheet}&cb=${cb}`).pipe(
+    // ... map and timeout logic
   );
 }
-  
 // src/app/database.ts
 
 getAssisted(): Observable<any[]> {
