@@ -61,35 +61,25 @@ export class Que implements OnInit {
   /**
    * Core Data Loading with Error/Timeout Handling
    */
-  initialLoad() {
-    this.isLoading = true;
-    this.cdr.detectChanges();
+ initialLoad() {
+  this.isLoading = true;
+  this.cdr.detectChanges();
 
-    this.db.getQueue('Queue').subscribe({
-      next: (data: any[]) => {
-        if (data) {
-          this.allCustomers = data; 
-          this.unservedCustomers = data.filter(c => !c['Time Out'] || c['Time Out'].trim() === '');
-        }
-        this.isLoading = false;
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        console.error('Queue Connection Timeout/Error:', err);
-        this.isLoading = false; 
-        this.showToaster('Connection slow. Trying to reach server...', false);
-        this.cdr.detectChanges();
-        
-        // Silent retry after 5 seconds for stability
-        setTimeout(() => this.initialLoad(), 5000);
-      }
-    });
-
-    // Load supporting data
-    this.fetchPrices();
-    this.fetchBarbers();
-    this.loadAssistedHistory();
-  }
+  this.db.getQueue('Queue').subscribe({
+    next: (data: any[]) => {
+      this.allCustomers = data; 
+      this.unservedCustomers = data.filter(c => !c['Time Out'] || c['Time Out'].trim() === '');
+      this.isLoading = false; // Data arrived, hide loader
+      this.cdr.detectChanges();
+    },
+    error: (err) => {
+      console.error('Connection failed:', err);
+      this.isLoading = false; // STOP the "Opening Shop" spinner so the error shows
+      this.showToaster('Connection error. Please check your internet or refresh.', false);
+      this.cdr.detectChanges();
+    }
+  });
+}
 
   loadAssistedHistory() {
     this.db.getAssisted().subscribe({
@@ -166,42 +156,60 @@ export class Que implements OnInit {
     this.cdr.detectChanges();
   }
 
-  submitToQueue() {
-    const phoneRegex = /^\+27\d{9}$/;
-    if (!this.newClient.name || !this.newClient.barber) {
-      this.showToaster('Name and Barber required.', false);
-      return;
-    }
-    if (!phoneRegex.test(this.newClient.cellphoneNumber)) {
-      this.showToaster('Invalid Phone (+27 + 9 digits).', false);
-      return;
-    }
-
-    this.isSubmitting = true;
-    this.db.updateClient({
-      action: 'append',
-      cellphoneNumber: this.newClient.cellphoneNumber,
-      name: this.newClient.name,
-      barber: this.newClient.barber
-    }).subscribe({
-      next: (res: any) => {
-        if (res.status === 'ok') {
-          this.showToaster('Added to queue!', true);
-          setTimeout(() => window.location.reload(), 500);
-        } else {
-          this.isSubmitting = false;
-          this.showToaster(res.message || 'Error.', false);
-          this.cdr.detectChanges();
-        }
-      },
-      error: () => {
-        this.isSubmitting = false;
-        this.showToaster('Server busy. Try again.', false);
-        this.cdr.detectChanges();
-      }
-    });
+submitToQueue() {
+  const phoneRegex = /^\+27\d{9}$/;
+  if (!this.newClient.name || !this.newClient.barber) {
+    this.showToaster('Name and Barber required.', false);
+    return;
   }
+  
+  this.isSubmitting = true;
+  this.cdr.detectChanges();
 
+  // Create a "Temporary" object to show on screen immediately
+  const tempUser = {
+    Name: this.newClient.name,
+    Barber: this.newClient.barber,
+    'Cellphone Number': this.newClient.cellphoneNumber,
+    'Time In': new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+    _row: 'temp-' + Date.now() // temporary ID
+  };
+
+  this.db.updateClient({
+    action: 'append',
+    cellphoneNumber: this.newClient.cellphoneNumber,
+    name: this.newClient.name,
+    barber: this.newClient.barber
+  }).subscribe({
+    next: (res: any) => {
+      if (res.status === 'ok') {
+        this.showToaster('Success! Added to the queue.', true);
+        
+        // 1. Manually push to the local list so they appear IMMEDIATELY
+        this.unservedCustomers = [...this.unservedCustomers, tempUser];
+        
+        // 2. Clear the form and close modal
+        this.closeModal();
+        this.isSubmitting = false;
+
+        // 3. Sync with the real database after 2 seconds to get the real row ID
+        setTimeout(() => {
+          this.initialLoad(); 
+        }, 2000);
+        
+      } else {
+        this.isSubmitting = false;
+        this.showToaster(res.message || 'Try again.', false);
+      }
+      this.cdr.detectChanges();
+    },
+    error: () => {
+      this.isSubmitting = false;
+      this.showToaster('Server busy. Try again.', false);
+      this.cdr.detectChanges();
+    }
+  });
+}
   confirmSkip(customer: any) {
     this.customerToSkip = customer;
     this.showSkipModal = true;
