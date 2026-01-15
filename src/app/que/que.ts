@@ -61,35 +61,25 @@ export class Que implements OnInit {
   /**
    * Core Data Loading with Error/Timeout Handling
    */
-  initialLoad() {
-    this.isLoading = true;
-    this.cdr.detectChanges();
+ initialLoad() {
+  this.isLoading = true;
+  this.cdr.detectChanges();
 
-    this.db.getQueue('Queue').subscribe({
-      next: (data: any[]) => {
-        if (data) {
-          this.allCustomers = data; 
-          this.unservedCustomers = data.filter(c => !c['Time Out'] || c['Time Out'].trim() === '');
-        }
-        this.isLoading = false;
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        console.error('Queue Connection Timeout/Error:', err);
-        this.isLoading = false; 
-        this.showToaster('Connection slow. Trying to reach server...', false);
-        this.cdr.detectChanges();
-        
-        // Silent retry after 5 seconds for stability
-        setTimeout(() => this.initialLoad(), 5000);
-      }
-    });
-
-    // Load supporting data
-    this.fetchPrices();
-    this.fetchBarbers();
-    this.loadAssistedHistory();
-  }
+  this.db.getQueue('Queue').subscribe({
+    next: (data: any[]) => {
+      this.allCustomers = data; 
+      this.unservedCustomers = data.filter(c => !c['Time Out'] || c['Time Out'].trim() === '');
+      this.isLoading = false; // Data arrived, hide loader
+      this.cdr.detectChanges();
+    },
+    error: (err) => {
+      console.error('Connection failed:', err);
+      this.isLoading = false; // STOP the "Opening Shop" spinner so the error shows
+      this.showToaster('Connection error. Please check your internet or refresh.', false);
+      this.cdr.detectChanges();
+    }
+  });
+}
 
   loadAssistedHistory() {
     this.db.getAssisted().subscribe({
