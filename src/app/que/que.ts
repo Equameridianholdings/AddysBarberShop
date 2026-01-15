@@ -156,19 +156,24 @@ export class Que implements OnInit {
     this.cdr.detectChanges();
   }
 
-  submitToQueue() {
+submitToQueue() {
   const phoneRegex = /^\+27\d{9}$/;
   if (!this.newClient.name || !this.newClient.barber) {
     this.showToaster('Name and Barber required.', false);
     return;
   }
-  if (!phoneRegex.test(this.newClient.cellphoneNumber)) {
-    this.showToaster('Invalid Phone (+27 + 9 digits).', false);
-    return;
-  }
-
+  
   this.isSubmitting = true;
   this.cdr.detectChanges();
+
+  // Create a "Temporary" object to show on screen immediately
+  const tempUser = {
+    Name: this.newClient.name,
+    Barber: this.newClient.barber,
+    'Cellphone Number': this.newClient.cellphoneNumber,
+    'Time In': new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+    _row: 'temp-' + Date.now() // temporary ID
+  };
 
   this.db.updateClient({
     action: 'append',
@@ -179,19 +184,24 @@ export class Que implements OnInit {
     next: (res: any) => {
       if (res.status === 'ok') {
         this.showToaster('Success! Added to the queue.', true);
-        this.closeModal(); // Close the modal immediately
         
-        // Wait 1.5 seconds for Google Sheets to stabilize, then refresh data
+        // 1. Manually push to the local list so they appear IMMEDIATELY
+        this.unservedCustomers = [...this.unservedCustomers, tempUser];
+        
+        // 2. Clear the form and close modal
+        this.closeModal();
+        this.isSubmitting = false;
+
+        // 3. Sync with the real database after 2 seconds to get the real row ID
         setTimeout(() => {
           this.initialLoad(); 
-          this.isSubmitting = false;
-        }, 1500);
+        }, 2000);
         
       } else {
         this.isSubmitting = false;
         this.showToaster(res.message || 'Try again.', false);
-        this.cdr.detectChanges();
       }
+      this.cdr.detectChanges();
     },
     error: () => {
       this.isSubmitting = false;
@@ -200,7 +210,6 @@ export class Que implements OnInit {
     }
   });
 }
-
   confirmSkip(customer: any) {
     this.customerToSkip = customer;
     this.showSkipModal = true;
