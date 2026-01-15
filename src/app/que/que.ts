@@ -157,40 +157,49 @@ export class Que implements OnInit {
   }
 
   submitToQueue() {
-    const phoneRegex = /^\+27\d{9}$/;
-    if (!this.newClient.name || !this.newClient.barber) {
-      this.showToaster('Name and Barber required.', false);
-      return;
-    }
-    if (!phoneRegex.test(this.newClient.cellphoneNumber)) {
-      this.showToaster('Invalid Phone (+27 + 9 digits).', false);
-      return;
-    }
+  const phoneRegex = /^\+27\d{9}$/;
+  if (!this.newClient.name || !this.newClient.barber) {
+    this.showToaster('Name and Barber required.', false);
+    return;
+  }
+  if (!phoneRegex.test(this.newClient.cellphoneNumber)) {
+    this.showToaster('Invalid Phone (+27 + 9 digits).', false);
+    return;
+  }
 
-    this.isSubmitting = true;
-    this.db.updateClient({
-      action: 'append',
-      cellphoneNumber: this.newClient.cellphoneNumber,
-      name: this.newClient.name,
-      barber: this.newClient.barber
-    }).subscribe({
-      next: (res: any) => {
-        if (res.status === 'ok') {
-          this.showToaster('Added to queue!', true);
-          setTimeout(() => window.location.reload(), 500);
-        } else {
+  this.isSubmitting = true;
+  this.cdr.detectChanges();
+
+  this.db.updateClient({
+    action: 'append',
+    cellphoneNumber: this.newClient.cellphoneNumber,
+    name: this.newClient.name,
+    barber: this.newClient.barber
+  }).subscribe({
+    next: (res: any) => {
+      if (res.status === 'ok') {
+        this.showToaster('Success! Added to the queue.', true);
+        this.closeModal(); // Close the modal immediately
+        
+        // Wait 1.5 seconds for Google Sheets to stabilize, then refresh data
+        setTimeout(() => {
+          this.initialLoad(); 
           this.isSubmitting = false;
-          this.showToaster(res.message || 'Error.', false);
-          this.cdr.detectChanges();
-        }
-      },
-      error: () => {
+        }, 1500);
+        
+      } else {
         this.isSubmitting = false;
-        this.showToaster('Server busy. Try again.', false);
+        this.showToaster(res.message || 'Try again.', false);
         this.cdr.detectChanges();
       }
-    });
-  }
+    },
+    error: () => {
+      this.isSubmitting = false;
+      this.showToaster('Server busy. Try again.', false);
+      this.cdr.detectChanges();
+    }
+  });
+}
 
   confirmSkip(customer: any) {
     this.customerToSkip = customer;
