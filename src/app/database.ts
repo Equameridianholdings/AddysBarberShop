@@ -15,13 +15,18 @@ private http = inject(HttpClient);
    * Fetches the full queue.
    * We will filter this in the component to show only unserved customers.
    */
-// database.ts
-// Inside your database.ts
-getQueue(sheet: string) {
+getQueue(sheet: string): Observable<any[]> {
   // Use Date.now() to force a fresh fetch every time
   const cb = Date.now();
   return this.http.get<any>(`${this.scriptUrl}?sheet=${sheet}&cb=${cb}`).pipe(
-    // ... map and timeout logic
+    timeout(15000),
+    map((response: { status: string; data: any; }) => 
+      response.status === 'ok' ? response.data : []
+    ),
+    catchError(error => {
+      console.error('Queue fetch error:', error);
+      return throwError(() => error);
+    })
   );
 }
 // src/app/database.ts
