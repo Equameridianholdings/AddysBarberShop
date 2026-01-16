@@ -75,11 +75,9 @@ export class Que implements OnInit {
           this.unservedCustomers = data.filter(c => !c['Time Out'] || c['Time Out'].trim() === '');
         }
         
-        // Slight delay to ensure the dashboard feels solid when it appears
-        setTimeout(() => {
-          this.isLoading = false; 
-          this.cdr.detectChanges();
-        }, 600);
+        // Show rows immediately without artificial delay
+        this.isLoading = false; 
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Connection failed:', err);
