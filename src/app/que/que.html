@@ -6,7 +6,7 @@
 </div>
 }
 
-<div class="p-6 bg-black min-h-screen text-white font-sans relative">
+<div class="p-3 sm:p-6 bg-black min-h-screen text-white font-sans relative">
 
   @if (isLoading) {
     <div class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center">
@@ -15,65 +15,65 @@
     </div>
   }
 
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 max-w-6xl mx-auto">
-    <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-[2.5rem] flex flex-col justify-between shadow-2xl">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10 max-w-6xl mx-auto">
+    <div class="bg-zinc-900 border border-zinc-800 p-4 sm:p-6 rounded-2xl sm:rounded-[2.5rem] flex flex-col justify-between shadow-2xl">
       <div class="flex justify-between items-start mb-4">
-        <h1 class="text-2xl font-black italic uppercase tracking-tighter text-amber-500 leading-none">
+        <h1 class="text-xl sm:text-2xl font-black italic uppercase tracking-tighter text-amber-500 leading-none">
           Queue
         </h1>
-        <div class="bg-amber-500 text-black px-5 py-1 rounded-full font-black text-3xl shadow-[0_0_20px_rgba(245,158,11,0.4)]">
+        <div class="bg-amber-500 text-black px-3 sm:px-5 py-1 rounded-full font-black text-2xl sm:text-3xl shadow-[0_0_20px_rgba(245,158,11,0.4)]">
           {{ unservedCustomers.length }}
         </div>
       </div>
-      <p class="text-zinc-500 text-[10px] font-black uppercase tracking-widest">Active Customers</p>
+      <p class="text-zinc-500 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Active Customers</p>
     </div>
 
-    <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-[2.5rem] flex flex-col justify-between shadow-2xl">
+    <div class="bg-zinc-900 border border-zinc-800 p-4 sm:p-6 rounded-2xl sm:rounded-[2.5rem] flex flex-col justify-between shadow-2xl">
       <div class="flex justify-between items-start mb-4">
-        <div class="w-12 h-12 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <span class="text-3xl font-black text-white italic tracking-tighter">{{ getAvgServiceTime() }}</span>
+        <span class="text-2xl sm:text-3xl font-black text-white italic tracking-tighter">{{ getAvgServiceTime() }}</span>
       </div>
-      <p class="text-zinc-500 text-[10px] font-black uppercase tracking-widest">Avg Service Speed</p>
+      <p class="text-zinc-500 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Avg Service Speed</p>
     </div>
 
-    <div class="bg-zinc-900 border border-amber-500/10 p-4 rounded-[2.5rem] flex items-center justify-center shadow-2xl">
-      <button (click)="showJoinModal = true" class="w-full h-full bg-white text-black font-black rounded-[1.8rem] hover:bg-amber-500 hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest text-sm py-8 shadow-lg">
+    <div class="bg-zinc-900 border border-amber-500/10 p-3 sm:p-4 rounded-2xl sm:rounded-[2.5rem] flex items-center justify-center shadow-2xl">
+      <button (click)="showJoinModal = true" class="w-full h-full bg-white text-black font-black rounded-xl sm:rounded-[1.8rem] hover:bg-amber-500 hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest text-xs sm:text-sm py-6 sm:py-8 shadow-lg">
         + Join Queue
       </button>
     </div>
   </div>
 
-  <div class="grid gap-4 max-w-4xl mx-auto mt-10">
+  <div class="grid gap-3 sm:gap-4 max-w-4xl mx-auto mt-8 sm:mt-10 px-2 sm:px-0">
     <div class="flex items-center gap-2 mb-2 px-2">
       <div class="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse"></div>
-      <span class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Live Queue Floor</span>
+      <span class="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Live Queue Floor</span>
     </div>
 
     @for (c of unservedCustomers; track c._row) {
-      <div class="bg-zinc-900 p-5 rounded-3xl flex justify-between items-center border border-zinc-800 group shadow-lg">
-        <div class="flex items-center gap-5">
-          <button (click)="confirmSkip(c)" class="text-zinc-700 hover:text-red-500 p-2 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+      <div class="bg-zinc-900 p-3 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col sm:flex-row justify-between sm:items-center border border-zinc-800 group shadow-lg gap-3 sm:gap-0">
+        <div class="flex items-center gap-3 sm:gap-5 flex-1 min-w-0">
+          <button (click)="confirmSkip(c)" class="text-zinc-700 hover:text-red-500 p-2 transition-colors flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
           </button>
           
-          <div>
-            <h2 class="text-xl font-bold uppercase group-hover:text-amber-500 transition-colors">{{ c.Name }}</h2>
-            <div class="flex items-center gap-3 mt-1 text-zinc-500 text-sm font-bold uppercase italic">
-              <p>Barber: <span class="text-zinc-300">{{ c.Barber }}</span></p>
-              <span class="text-zinc-800">|</span>
+          <div class="min-w-0 flex-1">
+            <h2 class="text-sm sm:text-xl font-bold uppercase group-hover:text-amber-500 transition-colors truncate">{{ c.Name }}</h2>
+            <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-1 text-zinc-500 text-xs sm:text-sm font-bold uppercase italic">
+              <p class="truncate">Barber: <span class="text-zinc-300">{{ c.Barber }}</span></p>
+              <span class="hidden sm:block text-zinc-800">|</span>
               
               @let wait = getWaitTimeData(c['Time In']);
-              <span [class]="wait.color + ' ' + wait.bg + ' ' + wait.border" class="flex items-center gap-1 font-mono font-black px-2 py-0.5 rounded-lg border">
+              <span [class]="wait.color + ' ' + wait.bg + ' ' + wait.border" class="flex items-center gap-1 font-mono font-black px-2 py-0.5 rounded-lg border w-fit">
                 {{ wait.text }}
               </span>
             </div>
           </div>
         </div>
-        <button (click)="openCheckout(c)" class="bg-zinc-800 text-amber-500 px-8 py-3 font-black rounded-2xl hover:bg-amber-500 hover:text-black transition-all uppercase text-xs tracking-widest shadow-inner">PAY</button>
+        <button (click)="openCheckout(c)" class="bg-zinc-800 text-amber-500 px-4 sm:px-8 py-2 sm:py-3 font-black rounded-xl sm:rounded-2xl hover:bg-amber-500 hover:text-black transition-all uppercase text-xs tracking-widest shadow-inner flex-shrink-0">PAY</button>
       </div>
     }
   </div>

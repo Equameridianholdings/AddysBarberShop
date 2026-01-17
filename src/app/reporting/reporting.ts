@@ -1,5 +1,5 @@
 import { CommonModule, DecimalPipe } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Database } from '../database';
 
@@ -11,8 +11,12 @@ import { Database } from '../database';
   styleUrl: './reporting.css',
 })
 export class Reporting implements OnInit {
+  private cdr = inject(ChangeDetectorRef);
+  private db = inject(Database);
+
   rawHistory: any[] = [];
   filteredHistory: any[] = [];
+  isLoading: boolean = true;
 
   // These link to the search bars in the HTML
   filterText: string = '';
@@ -20,19 +24,37 @@ export class Reporting implements OnInit {
   endDate: string = '';
   sortDirection: 'asc' | 'desc' = 'desc';
 
-  constructor(private db: Database) {}
-
   ngOnInit() {
     this.loadArchivedData();
   }
 
   loadArchivedData() {
+    this.isLoading = true;
+    this.cdr.detectChanges();
+    
+    // Set a timeout to prevent infinite loading - max 5 seconds
+    const loadingTimeout = setTimeout(() => {
+      if (this.isLoading) {
+        console.warn('History loading timeout - force close loading screen');
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      }
+    }, 5000);
+    
     this.db.getAssisted().subscribe({
       next: (data) => {
+        clearTimeout(loadingTimeout);
         this.rawHistory = data;
         this.applyFilters();
+        this.isLoading = false;
+        this.cdr.detectChanges();
       },
-      error: (err) => console.error('Error loading history:', err)
+      error: (err) => {
+        clearTimeout(loadingTimeout);
+        console.error('Error loading history:', err);
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      }
     });
   }
 

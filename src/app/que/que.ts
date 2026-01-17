@@ -77,10 +77,22 @@ export class Que implements OnInit {
       }
     }, 10000);
 
-    // Primary data fetch
+    // Load all data in parallel
+    let completedRequests = 0;
+    const totalRequests = 4; // Queue, Prices, Barbers, Assisted
+
+    const onAllDataLoaded = () => {
+      completedRequests++;
+      if (completedRequests === totalRequests) {
+        clearTimeout(loadingTimeout);
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      }
+    };
+
+    // Primary data fetch - Queue
     this.db.getQueue('Queue').subscribe({
       next: (data: any[]) => {
-        clearTimeout(loadingTimeout);
         if (data && data.length > 0) {
           this.allCustomers = data; 
           this.unservedCustomers = data.filter(c => !c['Time Out'] || c['Time Out'].trim() === '');
@@ -88,24 +100,52 @@ export class Que implements OnInit {
           this.allCustomers = [];
           this.unservedCustomers = [];
         }
-        
-        // Show rows immediately without artificial delay
-        this.isLoading = false; 
-        this.cdr.detectChanges();
+        onAllDataLoaded();
       },
       error: (err) => {
+        console.error('Queue fetch error:', err);
+        this.isLoading = false;
         clearTimeout(loadingTimeout);
-        console.error('Connection failed:', err);
-        this.isLoading = false; 
         this.showToaster('Connection error. Please check your internet or refresh.', false);
         this.cdr.detectChanges();
       }
     });
 
-    // Background loads
-    this.fetchPrices();
-    this.fetchBarbers();
-    this.loadAssistedHistory();
+    // Fetch prices
+    this.db.getPrices().subscribe({
+      next: (data) => {
+        this.priceList = data;
+        onAllDataLoaded();
+      },
+      error: () => {
+        console.error('Price fetch error');
+        onAllDataLoaded();
+      }
+    });
+
+    // Fetch barbers
+    this.db.getBarbers().subscribe({
+      next: (data) => {
+        this.barbers = data;
+        onAllDataLoaded();
+      },
+      error: () => {
+        console.error('Barber fetch error');
+        onAllDataLoaded();
+      }
+    });
+
+    // Fetch assisted history
+    this.db.getAssisted().subscribe({
+      next: (data) => {
+        this.allAssistedData = data;
+        onAllDataLoaded();
+      },
+      error: () => {
+        console.error('Assisted history fetch error');
+        onAllDataLoaded();
+      }
+    });
   }
 
   loadAssistedHistory() {

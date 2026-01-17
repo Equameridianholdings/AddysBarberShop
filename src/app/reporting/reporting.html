@@ -1,24 +1,31 @@
-<div class="p-6 bg-black min-h-screen text-white font-sans">
+<div class="p-3 sm:p-6 bg-black min-h-screen text-white font-sans">
+  @if (isLoading) {
+    <div class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center">
+      <div class="h-12 w-12 border-4 border-zinc-800 border-t-amber-500 rounded-full animate-spin mb-4"></div>
+      <p class="text-zinc-500 font-black uppercase tracking-[0.3em] text-xs">Loading History...</p>
+    </div>
+  }
+
   <div class="max-w-7xl mx-auto">
     
-    <div class="flex flex-col md:flex-row justify-between items-end mb-10 gap-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 sm:mb-10 gap-4 sm:gap-6">
       <div>
-        <h1 class="text-4xl font-black uppercase italic tracking-tighter text-amber-500 leading-none">Business<br>History</h1>
-        <p class="text-zinc-500 text-[10px] font-black uppercase tracking-widest mt-2">Showing {{ filteredHistory.length }} Records</p>
+        <h1 class="text-2xl sm:text-4xl font-black uppercase italic tracking-tighter text-amber-500 leading-none">Business<br>History</h1>
+        <p class="text-zinc-500 text-[9px] sm:text-[10px] font-black uppercase tracking-widest mt-2">Showing {{ filteredHistory.length }} Records</p>
       </div>
-      <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-[2rem] text-right min-w-[280px] shadow-2xl">
-        <p class="text-zinc-500 text-[10px] font-black uppercase tracking-widest mb-1">Total Revenue</p>
-        <h2 class="text-4xl font-black text-white italic tracking-tighter">R{{ totalRevenue | number:'1.2-2' }}</h2>
+      <div class="bg-zinc-900 border border-zinc-800 p-4 sm:p-6 rounded-xl sm:rounded-[2rem] text-right w-full sm:w-auto sm:min-w-[280px] shadow-2xl">
+        <p class="text-zinc-500 text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-1">Total Revenue</p>
+        <h2 class="text-2xl sm:text-4xl font-black text-white italic tracking-tighter">R{{ totalRevenue | number:'1.2-2' }}</h2>
       </div>
     </div>
 
-    <div class="bg-zinc-900/50 border border-zinc-800 p-6 rounded-[2rem] mb-8 shadow-xl">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+    <div class="bg-zinc-900/50 border border-zinc-800 p-4 sm:p-6 rounded-xl sm:rounded-[2rem] mb-8 shadow-xl">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 items-end">
         
         <div>
-          <label class="block text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 px-1">Search Name / Cell</label>
+          <label class="block text-[9px] sm:text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 px-1">Search Name / Cell</label>
           <input type="text" [(ngModel)]="filterText" (input)="applyFilters()" placeholder="Type to search..." 
-                 class="w-full bg-zinc-800 border-none rounded-xl p-3 text-sm text-white focus:ring-2 focus:ring-amber-500 transition-all">
+                 class="w-full bg-zinc-800 border-none rounded-xl p-3 text-xs sm:text-sm text-white focus:ring-2 focus:ring-amber-500 transition-all">
         </div>
 
         <div>
