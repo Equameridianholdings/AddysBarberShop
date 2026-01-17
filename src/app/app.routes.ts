@@ -4,9 +4,6 @@ import { Reporting } from './reporting/reporting';
 
 export const routes: Routes = [
 
-   { path: 'que', component: Que}, // Your Home/Queue page
+  { path: 'que', component: Que}, // Your Home/Queue page
   { path: 'reporting', component: Reporting }, // The new Reporting page
- 
-
- 
 ];
