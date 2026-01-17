@@ -51,11 +51,11 @@ export class Que implements OnInit {
   ngOnInit() {
     this.initialLoad();
 
-    // Auto-refresh clock for wait times
+    // Auto-refresh clock for wait times every second for accurate counting
     setInterval(() => {
       this.currentTime = new Date();
       this.cdr.detectChanges();
-    }, 60000);
+    }, 1000);
   }
 
   /**
@@ -67,12 +67,26 @@ export class Que implements OnInit {
     this.unservedCustomers = []; // Force clear the list to kill cached views
     this.cdr.detectChanges();
 
+    // Set a timeout to prevent infinite loading - max 10 seconds
+    const loadingTimeout = setTimeout(() => {
+      if (this.isLoading) {
+        console.warn('Loading timeout - forcing close of loading screen');
+        this.isLoading = false;
+        this.showToaster('Taking longer than expected, please refresh if needed', false);
+        this.cdr.detectChanges();
+      }
+    }, 10000);
+
     // Primary data fetch
     this.db.getQueue('Queue').subscribe({
       next: (data: any[]) => {
+        clearTimeout(loadingTimeout);
         if (data && data.length > 0) {
           this.allCustomers = data; 
           this.unservedCustomers = data.filter(c => !c['Time Out'] || c['Time Out'].trim() === '');
+        } else {
+          this.allCustomers = [];
+          this.unservedCustomers = [];
         }
         
         // Show rows immediately without artificial delay
@@ -80,6 +94,7 @@ export class Que implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err) => {
+        clearTimeout(loadingTimeout);
         console.error('Connection failed:', err);
         this.isLoading = false; 
         this.showToaster('Connection error. Please check your internet or refresh.', false);
@@ -122,6 +137,21 @@ export class Que implements OnInit {
   /**
    * Selection Logic
    */
+  getDistinctAssistedUsers(): any[] {
+    // Return distinct users by phone number (keep first occurrence only)
+    const seenPhones = new Set<string>();
+    return this.allAssistedData.filter(user => {
+      const phone = user['Cellphone Number']?.toString().trim();
+      if (!phone) return false;
+      
+      if (seenPhones.has(phone)) {
+        return false; // Skip duplicates
+      }
+      seenPhones.add(phone);
+      return true;
+    });
+  }
+
   toggleProduct(product: any) {
     const index = this.selectedProducts.findIndex(p => p.CutType === product.CutType);
     
@@ -271,8 +301,12 @@ export class Que implements OnInit {
         this.showToaster('Payment Sync Successful', true);
         this.showCashModal = false;
         this.showDigitalModal = false;
-        // Trigger initialLoad to verify the record moved to Assisted history
-        setTimeout(() => this.initialLoad(), 1000);
+        this.selectedCustomer = null;
+        this.selectedProducts = [];
+        // Refresh queue data without full page reload for faster response
+        setTimeout(() => {
+          this.initialLoad();
+        }, 1000);
       },
       error: () => { 
         this.isSubmitting = false; 
@@ -300,20 +334,53 @@ export class Que implements OnInit {
   }
 
   getAvgServiceTime(): string {
-    const served = this.allCustomers.filter(c => c['Time In'] && c['Time Out'] && c['Time Out'].trim() !== '');
+    const served = this.allCustomers.filter(c => {
+      const timeIn = c['Time In']?.toString().trim();
+      const timeOut = c['Time Out']?.toString().trim();
+      return timeIn && timeOut && timeIn.length > 0 && timeOut.length > 0;
+    });
+    
     if (served.length === 0) return '0m';
+    
     const totalDiff = served.reduce((acc, c) => {
-      const parse = (s: string) => { 
-        const [h, m] = s.split(':').map(Number); 
-        const d = new Date(); 
-        d.setHours(h, m, 0); 
-        return d.getTime(); 
-      };
-      const diff = (parse(c['Time Out']) - parse(c['Time In'])) / 60000;
-      return acc + (diff > 0 ? diff : 0);
+      try {
+        const parseTime = (timeStr: string) => {
+          const parts = timeStr.trim().split(':');
+          const h = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10);
+          if (isNaN(h) || isNaN(m)) return null;
+          return { h, m };
+        };
+        
+        const timeInParsed = parseTime(c['Time In']);
+        const timeOutParsed = parseTime(c['Time Out']);
+        
+        if (!timeInParsed || !timeOutParsed) return acc;
+        
+        // Convert to minutes from midnight
+        const timeInMinutes = timeInParsed.h * 60 + timeInParsed.m;
+        const timeOutMinutes = timeOutParsed.h * 60 + timeOutParsed.m;
+        
+        // Calculate difference, handling midnight wrap-around
+        let diff = timeOutMinutes - timeInMinutes;
+        if (diff < 0) diff += 24 * 60; // If negative, it crossed midnight
+        
+        return acc + (diff > 0 ? diff : 0);
+      } catch (e) {
+        console.warn('Error parsing time:', e);
+        return acc;
+      }
     }, 0);
+    
     const avg = Math.round(totalDiff / served.length);
-    return avg < 60 ? `${avg}m` : `${Math.floor(avg / 60)}h ${avg % 60}m`;
+    
+    // Display in hours if >= 60 minutes, otherwise display in minutes
+    if (avg >= 60) {
+      const hours = Math.floor(avg / 60);
+      const mins = avg % 60;
+      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    }
+    return `${avg}m`;
   }
 
   showToaster(msg: string, isSuccess: boolean) {

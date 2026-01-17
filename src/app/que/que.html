@@ -97,7 +97,7 @@
                    class="w-full bg-zinc-800 border-2 border-zinc-700 focus:border-amber-500 rounded-2xl p-4 text-white font-mono text-lg transition-all outline-none">
             
             <datalist id="phoneSuggestions">
-              @for (user of allAssistedData; track user._row) {
+              @for (user of getDistinctAssistedUsers(); track user._row) {
                 <option [value]="user['Cellphone Number'].toString().startsWith('+') ? user['Cellphone Number'] : '+' + user['Cellphone Number']">
                     {{ user.Name }}
                 </option>
