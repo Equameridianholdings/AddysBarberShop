@@ -89,23 +89,51 @@
         <div class="space-y-6">
           <div>
             <label class="block text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 px-1">Cellphone Number</label>
-            <input list="phoneSuggestions" 
-                   name="custPhone" 
-                   [(ngModel)]="newClient.cellphoneNumber" 
-                   (input)="onPhoneInput()" 
-                   placeholder="+27..." 
-                   class="w-full bg-zinc-800 border-2 border-zinc-700 focus:border-amber-500 rounded-2xl p-4 text-white font-mono text-lg transition-all outline-none">
+            <div class="flex items-center gap-2">
+              <div class="bg-zinc-800 border-2 border-zinc-700 rounded-2xl px-4 py-4 text-white font-mono text-lg font-black flex-shrink-0">
+                +27
+              </div>
+              <div class="flex-1">
+                <input list="phoneSuggestions" 
+                       name="custPhone" 
+                       [(ngModel)]="newClient.phoneDigits" 
+                       (input)="onPhoneInput()" 
+                       placeholder="9 digits" 
+                       maxlength="9"
+                       type="tel"
+                       inputmode="numeric"
+                       [class.border-green-500]="newClient.phoneDigits.length === 9"
+                       [class.border-red-500]="newClient.phoneDigits.length > 0 && newClient.phoneDigits.length !== 9"
+                       class="w-full bg-zinc-800 border-2 border-zinc-700 focus:border-amber-500 rounded-2xl p-4 text-white font-mono text-lg transition-all outline-none">
+                
+                <datalist id="phoneSuggestions">
+                  @for (user of distinctAssistedUsers; track user._row) {
+                    <option [value]="user['Cellphone Number'].toString().replace(/\D+/g, '').slice(-9)">
+                        {{ user.Name }}
+                    </option>
+                  }
+                </datalist>
+              </div>
+            </div>
             
-            <datalist id="phoneSuggestions">
-              @for (user of getDistinctAssistedUsers(); track user._row) {
-                <option [value]="user['Cellphone Number'].toString().startsWith('+') ? user['Cellphone Number'] : '+' + user['Cellphone Number']">
-                    {{ user.Name }}
-                </option>
-              }
-            </datalist>
+            @if (isExistingUser) {
+              <div class="mt-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                <p class="text-green-500 text-xs font-black uppercase tracking-widest">✓ Customer Found</p>
+              </div>
+            }
+            @if (isUserSelected && !isExistingUser) {
+              <div class="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <p class="text-blue-500 text-xs font-black uppercase tracking-widest">+ New Customer</p>
+              </div>
+            }
+            @if (newClient.phoneDigits.length > 0 && newClient.phoneDigits.length !== 9) {
+              <div class="mt-2 text-xs text-red-500 font-black uppercase tracking-widest">
+                {{ newClient.phoneDigits.length }}/9 digits
+              </div>
+            }
           </div>
 
-          <div [class.opacity-30]="!isUserSelected" class="space-y-6 transition-all duration-500">
+          <div [class.opacity-50]="!isUserSelected" class="space-y-6 transition-all duration-500">
             <div>
               <label class="block text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 px-1">Customer Name</label>
               <input name="custName" [(ngModel)]="newClient.name" [disabled]="!isUserSelected || isExistingUser" type="text" placeholder="Enter name..." class="w-full bg-zinc-800 disabled:cursor-not-allowed border-none rounded-2xl p-4 text-white uppercase">

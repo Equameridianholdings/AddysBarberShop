@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { Database } from '../database';
 import { FormsModule } from '@angular/forms';
+import { timeout } from 'rxjs';
 
 @Component({
   selector: 'app-que',
@@ -17,7 +18,8 @@ export class Que implements OnInit {
   // Data lists
   unservedCustomers: any[] = [];
   allCustomers: any[] = [];
-  allAssistedData: any[] = []; 
+  allAssistedData: any[] = [];
+  distinctAssistedUsers: any[] = [];
   priceList: any[] = [];
   barbers: any[] = [];
   
@@ -33,6 +35,7 @@ export class Que implements OnInit {
   // New Client Form Data
   newClient = { 
     name: '', 
+    phoneDigits: '',
     cellphoneNumber: '+27', 
     barber: '' 
   };
@@ -64,34 +67,35 @@ export class Que implements OnInit {
    */
   initialLoad() {
     this.isLoading = true;
-    this.unservedCustomers = []; // Force clear the list to kill cached views
+    this.unservedCustomers = [];
     this.cdr.detectChanges();
 
-    // Set a timeout to prevent infinite loading - max 10 seconds
-    const loadingTimeout = setTimeout(() => {
+    // Force close loading screen after 5 seconds MAXIMUM - fallback timeout
+    const forceCloseTimeout = setTimeout(() => {
       if (this.isLoading) {
-        console.warn('Loading timeout - forcing close of loading screen');
+        console.warn('Force closing loading screen after timeout');
         this.isLoading = false;
-        this.showToaster('Taking longer than expected, please refresh if needed', false);
         this.cdr.detectChanges();
       }
-    }, 10000);
+    }, 5000);
 
-    // Load all data in parallel
-    let completedRequests = 0;
-    const totalRequests = 4; // Queue, Prices, Barbers, Assisted
+    let dataLoadedCount = 0;
+    const requiredDataLoads = 1; // Only Queue is required to show rows
 
-    const onAllDataLoaded = () => {
-      completedRequests++;
-      if (completedRequests === totalRequests) {
-        clearTimeout(loadingTimeout);
+    const checkIfAllDataLoaded = () => {
+      dataLoadedCount++;
+      // Close loading screen once required data is loaded
+      if (dataLoadedCount >= requiredDataLoads && this.isLoading) {
+        clearTimeout(forceCloseTimeout);
         this.isLoading = false;
         this.cdr.detectChanges();
       }
     };
 
-    // Primary data fetch - Queue
-    this.db.getQueue('Queue').subscribe({
+    // Fetch Queue - REQUIRED to show rows
+    this.db.getQueue('Queue').pipe(
+      timeout(4000)
+    ).subscribe({
       next: (data: any[]) => {
         if (data && data.length > 0) {
           this.allCustomers = data; 
@@ -100,51 +104,46 @@ export class Que implements OnInit {
           this.allCustomers = [];
           this.unservedCustomers = [];
         }
-        onAllDataLoaded();
+        checkIfAllDataLoaded();
       },
       error: (err) => {
         console.error('Queue fetch error:', err);
-        this.isLoading = false;
-        clearTimeout(loadingTimeout);
-        this.showToaster('Connection error. Please check your internet or refresh.', false);
-        this.cdr.detectChanges();
+        checkIfAllDataLoaded();
       }
     });
 
-    // Fetch prices
-    this.db.getPrices().subscribe({
+    // Fetch Prices - needed for checkout modal
+    this.db.getPrices().pipe(
+      timeout(3000)
+    ).subscribe({
       next: (data) => {
         this.priceList = data;
-        onAllDataLoaded();
+        this.cdr.detectChanges();
       },
-      error: () => {
-        console.error('Price fetch error');
-        onAllDataLoaded();
-      }
+      error: (err) => console.error('Price fetch error:', err)
     });
 
-    // Fetch barbers
-    this.db.getBarbers().subscribe({
+    // Fetch Barbers - needed for join form
+    this.db.getBarbers().pipe(
+      timeout(3000)
+    ).subscribe({
       next: (data) => {
         this.barbers = data;
-        onAllDataLoaded();
+        this.cdr.detectChanges();
       },
-      error: () => {
-        console.error('Barber fetch error');
-        onAllDataLoaded();
-      }
+      error: (err) => console.error('Barber fetch error:', err)
     });
 
-    // Fetch assisted history
-    this.db.getAssisted().subscribe({
+    // Fetch Assisted - needed for phone suggestions
+    this.db.getAssisted().pipe(
+      timeout(3000)
+    ).subscribe({
       next: (data) => {
         this.allAssistedData = data;
-        onAllDataLoaded();
+        this.updateDistinctAssistedUsers();
+        this.cdr.detectChanges();
       },
-      error: () => {
-        console.error('Assisted history fetch error');
-        onAllDataLoaded();
-      }
+      error: (err) => console.error('Assisted fetch error:', err)
     });
   }
 
@@ -178,9 +177,14 @@ export class Que implements OnInit {
    * Selection Logic
    */
   getDistinctAssistedUsers(): any[] {
-    // Return distinct users by phone number (keep first occurrence only)
+    // Return cached distinct users
+    return this.distinctAssistedUsers;
+  }
+
+  // Call this when allAssistedData changes to update the cache
+  updateDistinctAssistedUsers() {
     const seenPhones = new Set<string>();
-    return this.allAssistedData.filter(user => {
+    this.distinctAssistedUsers = this.allAssistedData.filter(user => {
       const phone = user['Cellphone Number']?.toString().trim();
       if (!phone) return false;
       
@@ -219,21 +223,38 @@ export class Que implements OnInit {
    * Form & Queue Actions
    */
   onPhoneInput() {
-    const typedPhone = this.newClient.cellphoneNumber.trim();
+    // Construct full phone number from +27 + digits
+    const fullPhone = '+27' + this.newClient.phoneDigits.trim();
+    
+    // Check if phone number is complete (exactly 9 digits)
+    const isPhoneComplete = this.newClient.phoneDigits.length === 9;
+    
+    // Look for matching customer in assisted list
     const existingUser = this.allAssistedData.find(u => {
       let sheetCell = u['Cellphone Number']?.toString() || '';
       if (sheetCell && !sheetCell.startsWith('+')) sheetCell = '+' + sheetCell;
-      return sheetCell === typedPhone;
+      return sheetCell === fullPhone;
     });
 
     if (existingUser) {
+      // Found in assisted list - auto-fill and disable inputs
       this.newClient.name = existingUser['Name'];
       this.newClient.barber = existingUser['Barber'];
+      this.newClient.cellphoneNumber = fullPhone;
       this.isExistingUser = true; 
       this.isUserSelected = true;
     } else {
+      // Not found in assisted list
       this.isExistingUser = false;
-      this.isUserSelected = typedPhone.length >= 12; 
+      this.newClient.cellphoneNumber = fullPhone;
+      // Only enable inputs if phone is complete AND not found
+      this.isUserSelected = isPhoneComplete;
+      
+      // If phone is incomplete, clear name/barber
+      if (!isPhoneComplete) {
+        this.newClient.name = '';
+        this.newClient.barber = '';
+      }
     }
     this.cdr.detectChanges();
   }
@@ -272,10 +293,10 @@ export class Que implements OnInit {
           this.closeModal();
           this.isSubmitting = false;
 
-          // Crucial: Wait 2 seconds for Google to process, then force fresh initialLoad
+          // Wait 1.5 seconds to show success message, then refresh page
           setTimeout(() => {
-            this.initialLoad(); 
-          }, 2000);
+            window.location.reload();
+          }, 1500);
           
         } else {
           this.isSubmitting = false;
@@ -431,7 +452,7 @@ export class Que implements OnInit {
 
   closeModal() {
     this.showJoinModal = false;
-    this.newClient = { name: '', cellphoneNumber: '+27', barber: '' };
+    this.newClient = { name: '', phoneDigits: '', cellphoneNumber: '+27', barber: '' };
     this.isUserSelected = false;
     this.isExistingUser = false;
     this.cdr.detectChanges();
